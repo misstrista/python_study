@@ -6,6 +6,7 @@ import numpy as np
 from zlib import crc32
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedShuffleSplit
+
 '''
 housing_path = os.path.join('dataji', 'housing')
 os.makedirs(housing_path, exist_ok=True)
@@ -15,6 +16,9 @@ DATA_URL = 'http://www.python.org/ftp/python/2.7.5/Python-2.7.5.tar.bz2'
 filename = DATA_URL.split('/')[-1]
 print(filename)
 '''
+DATA_URL = 'http://www.python.org/ftp/python/2.7.5/Python-2.7.5.tar.bz2'
+filename = DATA_URL.split('/')
+print(filename)
 HOUSING_PATH = os.path.join('data', 'housing')
 
 
@@ -23,13 +27,13 @@ def load_housing_data(housing_path=HOUSING_PATH):
     return pd.read_csv(csv_path)
 
 
-housing = load_housing_data()
+housing = load_housing_data()  # 返回dataframe对象
 print(housing.info())  # 获取数据集的简单描述，包括总行数、每个属性的类型和非空值的数量
 print(housing['ocean_proximity'].value_counts())  # 查看该项数据中有多少种分类存在，每种分类下有多少数量
 print(housing.describe())  # 显示数值属性的摘要
 
-#  housing.hist(bins=50, figsize=(10, 15))
-#  plt.show()
+housing.hist(bins=50, figsize=(10, 15))  # bins表示在画直方图时将数据分成多少份
+# plt.show()
 print(np.random.permutation(9))  # 随机打乱顺序
 
 
@@ -38,9 +42,9 @@ def split_train_test(data, test_ratio):
     '''
     这种情况得到的数据是变化的,两种解决方法，一种是在第一次运行程序后即保存测试集，另一种是在生成随机数之前设置一个随机数生成器
     的种子，从而始终让它生成相同的随机索引
-    :param data:
-    :param test_ratio:
-    :return:
+    :param data:数据源
+    :param test_ratio:测试数据占比
+    :return:测试数据集
 
     '''
     np.random.seed(42)  # 设置随机种子为42
@@ -54,12 +58,58 @@ def split_train_test(data, test_ratio):
 # 创建测试集方法二
 housing_with_id1 = housing.reset_index()  # 重置索引，参数drop，为true时，不保留原来的index，否则原来的index作为新的一列
 print(housing_with_id1.head())
+print(type(housing_with_id1['index']))
 housing_with_id1['id'] = housing['longitude'] * 1000 + housing['latitude']
-# print(crc32(np.int64(123)) & 0xffffffff < 0.2 * 2 ** 32)
-# print(crc32(np.int64(0)) & 0xffffffff)
-# print(2 ** 32)
+print(crc32(np.int64(123)) & 0xffffffff < 0.2 * 2 ** 32)
+print(bin(crc32(np.int64(0))))
+print(crc32(np.int64(0)) & 0xffffffff)
+print(2 ** 32)
+# apply是干啥的，下面主要是对apply进行了使用，传入的是series数据时，无axis参数，传入dataframe时，可以使用axis参数
+'''
+
+# f = lambda x: x.max() - x.min()
+# f = lambda x: x + x
+df = pd.DataFrame(np.random.randn(4, 1), columns=list('b'), index=['utah', 'ohio', 'texas', 'oregon'])
+print(type(df))
+print(df)
+
+t1 = housing_with_id1['index'].apply(f)
+print(t1)
+
+t2 = housing_with_id1['index'].apply(f, axis=1)
+print(t2)
+'''
 
 
+def test_set_check(identidier, test_ratio):
+    return crc32(np.int64(identidier)) & 0xffffffff > 0.2 * 2 ** 32
+
+
+print(crc32(np.int64(1)) & 0xffffffff)
+print(crc32(np.int64(2)) & 0xffffffff)
+print(crc32(np.int64(3)) & 0xffffffff)
+print(crc32(np.int64(4)) & 0xffffffff)
+print(crc32(np.int64(5)) & 0xffffffff)
+print(crc32(np.int64(6)) & 0xffffffff)
+df_test = pd.DataFrame(np.random.randn(4, 3), columns=list('bcd'))
+df_test1 = df_test.reset_index()
+print(df_test1)
+in_df_test = df_test1['index'].apply(lambda id_:test_set_check(id_, 0.2))
+print(in_df_test)
+print(bin(in_df_test[0]))
+print(bin(~in_df_test[0]))
+print(bin(True))
+print(bin(~True))
+print(df_test[~in_df_test])
+print(bool(~False))
+print(~0b1)
+print(~True)
+print(bool(-1))
+print(bool(-2))
+
+aaa = pd.Series([True, True, True])
+print(aaa)
+print(~aaa[0])
 # ages = np.array([1, 5, 10, 40, 36, 12, 58, 62, 77, 89, 100, 18, 20, 25, 30, 32])  # 年龄数据
 # print(pd.cut(ages, 5, labels=
 # 对收入中位数进行类别划分
@@ -69,7 +119,6 @@ housing['income_cat'] = pd.cut(housing['median_income'], bins=[0., 1.5, 3.0, 4.5
 
 # 采用sklearn中的方法实现数据集划分
 train_set, test_set = train_test_split(housing, test_size=0.2, random_state=42)
-
 
 # 根据收入类别进行分层抽样(保证比例)
 split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
@@ -81,7 +130,7 @@ for set_ in (strat_train_set, strat_test_set):
     set_.drop('income_cat', axis=1, inplace=True)
 # 进一步观察数据,首先创建一个训练数据的副本，以确保不破坏原始数据
 housing_backup = strat_train_set.copy()
-housing_backup.plot(kind='scatter', x='longitude', y='latitude', alpha=0.4, s=housing_backup['population']/100,
+housing_backup.plot(kind='scatter', x='longitude', y='latitude', alpha=0.4, s=housing_backup['population'] / 100,
                     label='population', figsize=(10, 7), c='median_house_value', cmap=plt.get_cmap('hot'),
                     colorbar=True)
 # plt.show()
